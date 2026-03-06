@@ -1,0 +1,653 @@
+{% extends 'core/base.html' %}
+{% block title %}Dashboard - VoiceGuard AI{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard { padding: 2rem 0 4rem; }
+
+    /* Welcome Bar */
+    .welcome-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .welcome-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 1.3rem; font-weight: 700;
+        color: white;
+    }
+
+    .welcome-title span { color: var(--primary); }
+    .welcome-time { color: var(--text-dim); font-size: 0.9rem; margin-top: 2px; }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover { transform: translateY(-3px); }
+
+    .stat-card::after {
+        content: attr(data-icon);
+        position: absolute; right: 1rem; bottom: 0.5rem;
+        font-size: 3rem; opacity: 0.07;
+    }
+
+    .stat-label { font-size: 0.8rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .stat-value { font-family: 'Orbitron', monospace; font-size: 2.2rem; font-weight: 900; color: white; line-height: 1; }
+    .stat-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.35rem; }
+    .stat-accent-blue { border-top: 2px solid var(--primary); }
+    .stat-accent-red { border-top: 2px solid var(--danger); }
+    .stat-accent-green { border-top: 2px solid var(--success); }
+    .stat-accent-yellow { border-top: 2px solid var(--warn); }
+
+    /* Main Grid */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+        .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Upload Card */
+    .upload-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 1rem; font-weight: 700; color: white;
+        margin-bottom: 1.25rem;
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .upload-zone {
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        padding: 3rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+        border-color: var(--primary);
+        background: rgba(0, 245, 255, 0.04);
+    }
+
+    .upload-zone input[type="file"] {
+        position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+
+    .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .upload-text { font-size: 1.05rem; font-weight: 600; color: white; margin-bottom: 0.4rem; }
+    .upload-sub { font-size: 0.85rem; color: var(--text-dim); }
+
+    .upload-selected {
+        display: none;
+        align-items: center; gap: 1rem;
+        background: rgba(0,245,255,0.06);
+        border: 1px solid rgba(0,245,255,0.2);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-top: 1rem;
+    }
+
+    .upload-selected .file-info { flex: 1; }
+    .upload-selected .file-name { font-weight: 600; color: white; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+    .upload-selected .file-size { font-size: 0.8rem; color: var(--text-dim); }
+
+    .btn-analyze {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, var(--primary), #0099cc);
+        color: var(--dark);
+        border: none; border-radius: 8px;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.95rem; font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.25s;
+        margin-top: 1rem;
+        display: none;
+        align-items: center; justify-content: center; gap: 8px;
+    }
+
+    .btn-analyze:hover { box-shadow: var(--glow); transform: translateY(-1px); }
+
+    /* Analysis Result */
+    .result-panel {
+        display: none;
+        margin-top: 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.75rem;
+        background: rgba(10, 22, 40, 0.6);
+    }
+
+    .result-header {
+        display: flex; align-items: center; gap: 1.25rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .result-icon {
+        width: 64px; height: 64px;
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; flex-shrink: 0;
+    }
+
+    .result-human { background: rgba(0,255,136,0.12); border: 1px solid rgba(0,255,136,0.3); }
+    .result-ai-gen { background: rgba(255,51,102,0.12); border: 1px solid rgba(255,51,102,0.3); }
+    .result-uncertain { background: rgba(255,170,0,0.12); border: 1px solid rgba(255,170,0,0.3); }
+
+    .result-verdict { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 900; }
+    .result-verdict.human { color: var(--success); }
+    .result-verdict.ai { color: var(--danger); }
+    .result-verdict.uncertain { color: var(--warn); }
+
+    .result-confidence { font-size: 0.9rem; color: var(--text-dim); margin-top: 3px; }
+
+    .feature-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .feature-score-item { }
+    .feature-score-label { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .feature-score-label span { color: var(--primary); font-family: 'Share Tech Mono', monospace; }
+
+    /* Loading */
+    .analyzing-overlay {
+        display: none; align-items: center; justify-content: center;
+        flex-direction: column; gap: 1rem;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .scanning-animation {
+        width: 80px; height: 80px;
+        border: 3px solid rgba(0,245,255,0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .analyzing-text { color: var(--primary); font-family: 'Orbitron', monospace; font-size: 0.9rem; letter-spacing: 2px; }
+
+    /* Recent Analyses */
+    .recent-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+    }
+
+    .analysis-item {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.85rem;
+        border-radius: 10px;
+        transition: background 0.2s;
+        text-decoration: none;
+        color: inherit;
+        margin-bottom: 0.4rem;
+    }
+
+    .analysis-item:hover { background: rgba(255,255,255,0.04); }
+
+    .analysis-file-icon {
+        width: 38px; height: 38px; border-radius: 8px;
+        background: rgba(0,245,255,0.08);
+        border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+
+    .analysis-info { flex: 1; min-width: 0; }
+    .analysis-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .analysis-meta { font-size: 0.75rem; color: var(--text-dim); margin-top: 1px; }
+
+    .confidence-mini {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+    }
+
+    /* Chart Section */
+    .chart-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Right Column Sidebar */
+    .sidebar-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .tip-card {
+        background: linear-gradient(135deg, rgba(123,47,255,0.1), rgba(0,245,255,0.05));
+        border: 1px solid rgba(123,47,255,0.2);
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+
+    .tip-title { font-weight: 700; color: var(--secondary); font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .tip-text { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; }
+
+    .empty-state {
+        text-align: center; padding: 2rem;
+        color: var(--text-dim);
+    }
+
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    canvas { max-height: 200px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container">
+        <!-- Welcome -->
+        <div class="welcome-bar">
+            <div>
+                <div class="welcome-title">Hello, <span>{{ user.first_name|default:user.username }}</span> 👋</div>
+                <div class="welcome-time" id="live-time"></div>
+            </div>
+            <a href="{% url 'history' %}" class="btn btn-secondary" style="font-size: 0.9rem; padding: 8px 18px;">📋 View All History</a>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card stat-accent-blue" data-icon="🔍">
+                <div class="stat-label">Total Analyses</div>
+                <div class="stat-value">{{ total }}</div>
+                <div class="stat-sub">Voice files analyzed</div>
+            </div>
+            <div class="stat-card stat-accent-red" data-icon="🤖">
+                <div class="stat-label">AI Detected</div>
+                <div class="stat-value" style="color: var(--danger);">{{ ai_count }}</div>
+                <div class="stat-sub">Synthetic / deepfake voices</div>
+            </div>
+            <div class="stat-card stat-accent-green" data-icon="👤">
+                <div class="stat-label">Human Voice</div>
+                <div class="stat-value" style="color: var(--success);">{{ human_count }}</div>
+                <div class="stat-sub">Genuine human recordings</div>
+            </div>
+            <div class="stat-card stat-accent-yellow" data-icon="📊">
+                <div class="stat-label">Avg Confidence</div>
+                <div class="stat-value" style="color: var(--warn);">{{ avg_confidence }}%</div>
+                <div class="stat-sub">Across all analyses</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left: Upload + Chart + Recent -->
+            <div>
+                <!-- Upload -->
+                <div class="upload-card">
+                    <div class="card-title">🎙️ Analyze New Voice Recording</div>
+
+                    <form method="POST" action="{% url 'analyze' %}" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        <div class="upload-zone" id="dropZone">
+                            <input type="file" name="audio_file" id="audioFileInput" accept="audio/*">
+                            <div class="upload-icon">🎵</div>
+                            <div class="upload-text">Drop audio file here or click to browse</div>
+                            <div class="upload-sub">MP3 · WAV · OGG · FLAC · M4A · AAC (Max 50MB)</div>
+                        </div>
+
+                        <div class="upload-selected" id="selectedFile">
+                            <span style="font-size: 1.5rem;">🎵</span>
+                            <div class="file-info">
+                                <div class="file-name" id="selectedFileName">filename.mp3</div>
+                                <div class="file-size" id="selectedFileSize">0 KB</div>
+                            </div>
+                            <button type="button" onclick="clearFile()" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size: 1.2rem;">✕</button>
+                        </div>
+
+                        <button type="submit" class="btn-analyze" id="analyzeBtn">
+                            <span id="analyzeBtnText">⚡ ANALYZE VOICE</span>
+                        </button>
+                    </form>
+
+                    <!-- Analyzing Overlay -->
+                    <div class="analyzing-overlay" id="analyzingOverlay">
+                        <div class="scanning-animation"></div>
+                        <div class="analyzing-text">ANALYZING VOICE PATTERNS...</div>
+                        <div style="font-size: 0.85rem; color: var(--text-dim);">Extracting spectral, pitch, and rhythm features</div>
+                    </div>
+
+                    <!-- Result Panel -->
+                    <div class="result-panel" id="resultPanel">
+                        <div class="result-header">
+                            <div class="result-icon" id="resultIcon">🤔</div>
+                            <div>
+                                <div class="result-verdict" id="resultVerdict">—</div>
+                                <div class="result-confidence" id="resultConfidence">Confidence: —</div>
+                                <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 3px;" id="resultFileName"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">Feature Analysis Breakdown</div>
+                        <div class="feature-scores" id="featureScores"></div>
+                    </div>
+                </div>
+
+                <!-- Weekly Chart -->
+                <div class="chart-section">
+                    <div class="card-title">📈 Weekly Analysis Activity</div>
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+
+                <!-- Distribution Chart -->
+                {% if total > 0 %}
+                <div class="chart-section">
+                    <div class="card-title">🥧 Detection Distribution</div>
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1.5rem; align-items: center;">
+                        <canvas id="pieChart" style="max-height: 180px;"></canvas>
+                        <div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 12px; height: 12px; border-radius: 3px; background: var(--success);"></div>
+                                    <span style="color: var(--text-dim); font-size: 0.9rem;">Human Voice</span>
+                                    <span style="margin-left: auto; font-family: 'Orbitron', monospace; color: var(--success);">{{ human_count }}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 12px; height: 12px; border-radius: 3px; background: var(--danger);"></div>
+                                    <span style="color: var(--text-dim); font-size: 0.9rem;">AI Generated</span>
+                                    <span style="margin-left: auto; font-family: 'Orbitron', monospace; color: var(--danger);">{{ ai_count }}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 12px; height: 12px; border-radius: 3px; background: var(--warn);"></div>
+                                    <span style="color: var(--text-dim); font-size: 0.9rem;">Uncertain</span>
+                                    <span style="margin-left: auto; font-family: 'Orbitron', monospace; color: var(--warn);">{{ uncertain_count }}</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                                <div style="font-size: 0.8rem; color: var(--text-dim);">DETECTION RATE</div>
+                                <div style="font-family: 'Orbitron', monospace; font-size: 1.5rem; color: white; margin-top: 3px;">
+                                    {% if total > 0 %}{{ avg_confidence }}%{% else %}—{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="sidebar-grid">
+                <!-- Recent Analyses -->
+                <div class="recent-card">
+                    <div class="card-title">🕒 Recent Analyses</div>
+                    {% if recent_analyses %}
+                        {% for a in recent_analyses %}
+                        <a href="{% url 'analysis_detail' a.pk %}" class="analysis-item">
+                            <div class="analysis-file-icon">{{ a.result_icon }}</div>
+                            <div class="analysis-info">
+                                <div class="analysis-name">{{ a.file_name }}</div>
+                                <div class="analysis-meta">{{ a.analyzed_at|date:"M d, Y" }} &bull; {{ a.duration|floatformat:1 }}s</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="{{ a.result_badge_class }}">{{ a.result|upper }}</span>
+                                <div class="confidence-mini">{{ a.confidence_score|floatformat:0 }}%</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                        <a href="{% url 'history' %}" style="display: block; text-align: center; color: var(--primary); font-size: 0.875rem; margin-top: 0.5rem; text-decoration: none; padding: 8px;">View All →</a>
+                    {% else %}
+                        <div class="empty-state">
+                            <div class="icon">🎵</div>
+                            <div>No analyses yet.<br>Upload your first audio file!</div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tips -->
+                <div class="tip-card">
+                    <div class="tip-title">💡 Detection Tips</div>
+                    <div class="tip-text">
+                        For best results, upload clear recordings with minimal background noise.
+                        WAV format gives the most accurate analysis. Files should be at least 3 seconds long.
+                    </div>
+                </div>
+
+                <div class="tip-card" style="background: linear-gradient(135deg, rgba(255,51,102,0.08), rgba(255,170,0,0.05)); border-color: rgba(255,51,102,0.2);">
+                    <div class="tip-title" style="color: var(--danger);">⚠️ How AI Voices Differ</div>
+                    <div class="tip-text">
+                        AI-generated voices often have overly consistent pitch, unnatural rhythm, and lack of background acoustics. Our model detects these subtle anomalies.
+                    </div>
+                </div>
+
+                <!-- System Info -->
+                <div class="recent-card">
+                    <div class="card-title">⚙️ System Status</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">Detection Engine</span>
+                            <span style="color: var(--success); font-size: 0.8rem; font-weight: 600;">● ONLINE</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">Model Version</span>
+                            <span style="color: var(--primary); font-family: 'Share Tech Mono', monospace; font-size: 0.85rem;">v2.4.1</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">Analysis Method</span>
+                            <span style="color: var(--text); font-size: 0.8rem;">5-Feature Ensemble</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">Avg Processing</span>
+                            <span style="color: var(--text); font-size: 0.8rem;">&lt; 3 seconds</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+    // Live Clock
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('live-time').textContent = now.toLocaleString('en-IN', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+    updateClock(); setInterval(updateClock, 1000);
+
+    // File Upload
+    const input = document.getElementById('audioFileInput');
+    const dropZone = document.getElementById('dropZone');
+    const selectedFile = document.getElementById('selectedFile');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+
+    input.addEventListener('change', handleFile);
+
+    ['dragover', 'dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.toggle('drag-over', evt === 'dragover');
+            if (evt === 'drop' && e.dataTransfer.files[0]) {
+                input.files = e.dataTransfer.files;
+                handleFile();
+            }
+        });
+    });
+
+    function handleFile() {
+        const file = input.files[0];
+        if (!file) return;
+        document.getElementById('selectedFileName').textContent = file.name;
+        document.getElementById('selectedFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+        selectedFile.style.display = 'flex';
+        analyzeBtn.style.display = 'flex';
+    }
+
+    function clearFile() {
+        input.value = '';
+        selectedFile.style.display = 'none';
+        analyzeBtn.style.display = 'none';
+        document.getElementById('resultPanel').style.display = 'none';
+    }
+
+    // Form Submit with AJAX
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!input.files[0]) return;
+
+        const overlay = document.getElementById('analyzingOverlay');
+        const resultPanel = document.getElementById('resultPanel');
+
+        analyzeBtn.style.display = 'none';
+        overlay.style.display = 'flex';
+        resultPanel.style.display = 'none';
+
+        const formData = new FormData(this);
+        try {
+            const res = await fetch("{% url 'analyze' %}", {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const data = await res.json();
+
+            overlay.style.display = 'none';
+
+            if (data.success) {
+                showResult(data);
+                refreshStats();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                analyzeBtn.style.display = 'flex';
+            }
+        } catch (err) {
+            overlay.style.display = 'none';
+            analyzeBtn.style.display = 'flex';
+            alert('Network error. Please try again.');
+        }
+    });
+
+    function showResult(data) {
+        const panel = document.getElementById('resultPanel');
+        const icon = document.getElementById('resultIcon');
+        const verdict = document.getElementById('resultVerdict');
+        const confidence = document.getElementById('resultConfidence');
+        const fileName = document.getElementById('resultFileName');
+        const features = document.getElementById('featureScores');
+
+        const labels = { human: '✅ HUMAN VOICE', ai: '🤖 AI GENERATED', uncertain: '⚠️ UNCERTAIN' };
+        const icons = { human: '👤', ai: '🤖', uncertain: '❓' };
+        const iconClasses = { human: 'result-human', ai: 'result-ai-gen', uncertain: 'result-uncertain' };
+
+        icon.textContent = icons[data.result] || '❓';
+        icon.className = 'result-icon ' + (iconClasses[data.result] || '');
+        verdict.textContent = labels[data.result] || data.result;
+        verdict.className = 'result-verdict ' + data.result;
+        confidence.textContent = `Confidence: ${data.confidence_score}%`;
+        fileName.textContent = `${data.file_name} · ${data.duration}s · Analyzed ${data.analyzed_at}`;
+
+        const featureData = [
+            { label: 'Spectral', value: data.spectral_score, color: '#00f5ff' },
+            { label: 'Pitch', value: data.pitch_score, color: '#7b2fff' },
+            { label: 'Rhythm', value: data.rhythm_score, color: '#00ff88' },
+            { label: 'Noise', value: data.noise_score, color: '#ffaa00' },
+            { label: 'Formant', value: data.formant_score, color: '#ff3366' },
+        ];
+
+        features.innerHTML = featureData.map(f => `
+            <div class="feature-score-item">
+                <div class="feature-score-label">${f.label} <span>${f.value.toFixed(1)}%</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${f.value}%; background: ${f.color};"></div>
+                </div>
+            </div>
+        `).join('');
+
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function refreshStats() {
+        location.reload();
+    }
+
+    // Weekly Bar Chart
+    const weeklyData = {{ weekly_data|safe }};
+    new Chart(document.getElementById('weeklyChart'), {
+        type: 'bar',
+        data: {
+            labels: weeklyData.map(d => d.day),
+            datasets: [{
+                label: 'Analyses',
+                data: weeklyData.map(d => d.count),
+                backgroundColor: 'rgba(0, 245, 255, 0.2)',
+                borderColor: 'rgba(0, 245, 255, 0.8)',
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a7a9a' } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a7a9a', stepSize: 1 }, beginAtZero: true }
+            }
+        }
+    });
+
+    {% if total > 0 %}
+    // Pie Chart
+    new Chart(document.getElementById('pieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Human', 'AI', 'Uncertain'],
+            datasets: [{
+                data: [{{ human_count }}, {{ ai_count }}, {{ uncertain_count }}],
+                backgroundColor: ['rgba(0,255,136,0.7)', 'rgba(255,51,102,0.7)', 'rgba(255,170,0,0.7)'],
+                borderColor: ['#00ff88', '#ff3366', '#ffaa00'],
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

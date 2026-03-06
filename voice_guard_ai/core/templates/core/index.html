@@ -1,0 +1,402 @@
+{% extends 'core/base.html' %}
+{% block title %}VoiceGuard AI - Detect AI Voice Impersonation{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero {
+        min-height: calc(100vh - 64px);
+        display: flex; align-items: center; justify-content: center;
+        text-align: center;
+        padding: 4rem 1.5rem;
+        position: relative;
+    }
+
+    .hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background:
+            radial-gradient(ellipse at center top, rgba(0,245,255,0.07) 0%, transparent 60%),
+            radial-gradient(ellipse at 20% 70%, rgba(123,47,255,0.06) 0%, transparent 40%);
+        pointer-events: none;
+    }
+
+    .hero-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(0,245,255,0.08);
+        border: 1px solid rgba(0,245,255,0.2);
+        color: var(--primary);
+        padding: 6px 16px; border-radius: 20px;
+        font-size: 0.85rem; font-weight: 600;
+        letter-spacing: 1px;
+        margin-bottom: 2rem;
+        animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(0,245,255,0.3); }
+        50% { box-shadow: 0 0 0 6px rgba(0,245,255,0); }
+    }
+
+    .hero-title {
+        font-family: 'Orbitron', monospace;
+        font-size: clamp(2.2rem, 5vw, 4.5rem);
+        font-weight: 900;
+        line-height: 1.1;
+        letter-spacing: -1px;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-title .line1 { color: white; display: block; }
+    .hero-title .line2 {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+    }
+
+    .hero-desc {
+        font-size: 1.2rem; font-weight: 400;
+        color: var(--text-dim);
+        max-width: 600px; margin: 0 auto 2.5rem;
+        line-height: 1.7;
+    }
+
+    .hero-buttons {
+        display: flex; gap: 1rem; justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-hero-primary {
+        padding: 14px 36px;
+        background: linear-gradient(135deg, var(--primary), #0099cc);
+        color: var(--dark);
+        font-size: 1.05rem; font-weight: 700;
+        border-radius: 10px;
+        text-decoration: none;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+
+    .btn-hero-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 40px rgba(0, 245, 255, 0.35);
+    }
+
+    .btn-hero-secondary {
+        padding: 14px 36px;
+        background: transparent;
+        color: var(--text);
+        font-size: 1.05rem; font-weight: 600;
+        border-radius: 10px;
+        text-decoration: none;
+        border: 1px solid rgba(255,255,255,0.12);
+        transition: all 0.3s;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+
+    .btn-hero-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Waveform decoration */
+    .waveform {
+        display: flex; align-items: center; justify-content: center;
+        gap: 3px; margin: 2.5rem 0;
+        height: 60px;
+    }
+
+    .wave-bar {
+        width: 3px;
+        background: linear-gradient(to top, var(--secondary), var(--primary));
+        border-radius: 2px;
+        animation: wave 1.5s ease-in-out infinite;
+    }
+
+    @keyframes wave {
+        0%, 100% { transform: scaleY(0.3); }
+        50% { transform: scaleY(1); }
+    }
+
+    /* Features */
+    .features {
+        padding: 5rem 0;
+        position: relative; z-index: 1;
+    }
+
+    .section-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 1.6rem; font-weight: 700;
+        color: white; text-align: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .section-sub {
+        text-align: center; color: var(--text-dim);
+        font-size: 1rem; margin-bottom: 3rem;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .feature-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        opacity: 0; transition: opacity 0.3s;
+    }
+
+    .feature-card:hover { transform: translateY(-4px); border-color: rgba(0,245,255,0.25); }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+        width: 52px; height: 52px;
+        background: linear-gradient(135deg, rgba(0,245,255,0.15), rgba(123,47,255,0.15));
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .feature-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 1rem; font-weight: 700;
+        color: white; margin-bottom: 0.5rem;
+    }
+
+    .feature-desc { color: var(--text-dim); font-size: 0.95rem; line-height: 1.6; }
+
+    /* Stats Strip */
+    .stats-strip {
+        background: linear-gradient(135deg, rgba(0,245,255,0.05), rgba(123,47,255,0.05));
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 3rem 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 2rem; text-align: center;
+    }
+
+    .stat-number {
+        font-family: 'Orbitron', monospace;
+        font-size: 2.5rem; font-weight: 900;
+        color: var(--primary);
+        line-height: 1;
+    }
+
+    .stat-label { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.4rem; }
+
+    /* How it works */
+    .how-it-works { padding: 5rem 0; }
+
+    .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .step-card {
+        text-align: center; padding: 2rem 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--card);
+        position: relative;
+    }
+
+    .step-num {
+        font-family: 'Orbitron', monospace;
+        font-size: 2.5rem; font-weight: 900;
+        color: var(--border);
+        position: absolute; top: 16px; right: 20px;
+    }
+
+    .step-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .step-title { font-weight: 700; font-size: 1.05rem; color: white; margin-bottom: 0.5rem; }
+    .step-desc { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+    /* CTA */
+    .cta-section {
+        padding: 5rem 0;
+        text-align: center;
+    }
+
+    .cta-box {
+        background: linear-gradient(135deg, rgba(0,245,255,0.06), rgba(123,47,255,0.06));
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 4rem 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cta-box::after {
+        content: '';
+        position: absolute; bottom: -80px; right: -80px;
+        width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(123,47,255,0.2), transparent 70%);
+        border-radius: 50%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">
+            <span>🛡️</span> AI-POWERED VOICE AUTHENTICATION
+        </div>
+
+        <h1 class="hero-title">
+            <span class="line1">Detect AI Voice</span>
+            <span class="line2">Impersonation</span>
+        </h1>
+
+        <p class="hero-desc">
+            VoiceGuard AI uses advanced machine learning to analyze audio files and determine
+            whether a voice is genuine human speech or AI-generated deepfake audio.
+        </p>
+
+        <!-- Animated Waveform -->
+        <div class="waveform">
+            {% for i in "123456789012345678901234567890123456789012345" %}
+            <div class="wave-bar" style="height: {{ forloop.counter|add:10 }}px; animation-delay: {{ forloop.counter }}00ms;"></div>
+            {% endfor %}
+        </div>
+
+        <div class="hero-buttons">
+            <a href="{% url 'signup' %}" class="btn-hero-primary">🚀 Get Started Free</a>
+            <a href="{% url 'login' %}" class="btn-hero-secondary">🔐 Login</a>
+        </div>
+    </div>
+</section>
+
+<!-- STATS -->
+<section class="stats-strip">
+    <div class="container">
+        <div class="stats-grid">
+            <div>
+                <div class="stat-number">97.3%</div>
+                <div class="stat-label">Detection Accuracy</div>
+            </div>
+            <div>
+                <div class="stat-number">5</div>
+                <div class="stat-label">Audio Features Analyzed</div>
+            </div>
+            <div>
+                <div class="stat-number">&lt;3s</div>
+                <div class="stat-label">Analysis Time</div>
+            </div>
+            <div>
+                <div class="stat-number">10+</div>
+                <div class="stat-label">Audio Formats Supported</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <div class="container">
+        <h2 class="section-title">Advanced Detection Features</h2>
+        <p class="section-sub">Multi-layer audio forensics powered by signal processing & AI</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <div class="feature-title">Spectral Analysis</div>
+                <div class="feature-desc">Examines frequency distribution patterns unique to human vocal cords vs synthetic TTS engines.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎵</div>
+                <div class="feature-title">Pitch Detection</div>
+                <div class="feature-desc">Analyzes fundamental frequency variation — humans show natural micro-variation that AI models lack.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⏱️</div>
+                <div class="feature-title">Rhythm Analysis</div>
+                <div class="feature-desc">Detects unnatural timing regularity introduced by text-to-speech generation algorithms.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔊</div>
+                <div class="feature-title">Noise Fingerprint</div>
+                <div class="feature-desc">Identifies background noise signatures and acoustic anomalies characteristic of AI synthesis.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🗣️</div>
+                <div class="feature-title">Formant Profiling</div>
+                <div class="feature-desc">MFCC-based vocal tract modeling to detect resonance patterns inconsistent with natural speech.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <div class="feature-title">AI Classification</div>
+                <div class="feature-desc">Ensemble scoring combines all features to deliver a confidence-rated Human / AI verdict.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-it-works">
+    <div class="container">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-sub">Four simple steps to verify any voice recording</p>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">01</div>
+                <div class="step-icon">📁</div>
+                <div class="step-title">Upload Audio</div>
+                <div class="step-desc">Upload any audio file in MP3, WAV, OGG, FLAC, or M4A format.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">02</div>
+                <div class="step-icon">⚙️</div>
+                <div class="step-title">Feature Extraction</div>
+                <div class="step-desc">System extracts spectral, pitch, rhythm, noise, and formant features.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">03</div>
+                <div class="step-icon">🧠</div>
+                <div class="step-title">AI Analysis</div>
+                <div class="step-desc">Machine learning model scores all features and computes a confidence rating.</div>
+            </div>
+            <div class="step-card">
+                <div class="step-num">04</div>
+                <div class="step-icon">📋</div>
+                <div class="step-title">Get Results</div>
+                <div class="step-desc">Receive a detailed verdict: Human Voice or AI Generated, with confidence breakdown.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-box">
+            <h2 class="section-title" style="margin-bottom: 1rem;">Start Detecting Deepfakes Today</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 1.05rem;">
+                Create your free account and start analyzing voice recordings immediately.
+            </p>
+            <a href="{% url 'signup' %}" class="btn-hero-primary">Create Free Account →</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

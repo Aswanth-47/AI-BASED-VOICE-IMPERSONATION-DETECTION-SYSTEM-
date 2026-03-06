@@ -1,0 +1,217 @@
+{% extends 'core/base.html' %}
+{% block title %}Analysis Detail - VoiceGuard AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-page { padding: 2rem 0 4rem; }
+
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        color: var(--text-dim); text-decoration: none; font-size: 0.9rem;
+        margin-bottom: 1.5rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--primary); }
+
+    .detail-header {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        display: flex; align-items: center; gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .verdict-badge {
+        width: 90px; height: 90px; border-radius: 20px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.8rem; flex-shrink: 0;
+    }
+
+    .verdict-human { background: rgba(0,255,136,0.12); border: 2px solid rgba(0,255,136,0.3); }
+    .verdict-ai { background: rgba(255,51,102,0.12); border: 2px solid rgba(255,51,102,0.3); }
+    .verdict-uncertain { background: rgba(255,170,0,0.12); border: 2px solid rgba(255,170,0,0.3); }
+
+    .verdict-title {
+        font-family: 'Orbitron', monospace;
+        font-size: clamp(1.3rem, 3vw, 2rem);
+        font-weight: 900;
+    }
+
+    .verdict-human .verdict-title { color: var(--success); }
+    .verdict-ai .verdict-title-text { color: var(--danger); }
+    .verdict-uncertain .verdict-title-text { color: var(--warn); }
+
+    .verdict-sub { color: var(--text-dim); margin-top: 4px; font-size: 0.95rem; }
+    .verdict-file { font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: var(--primary); margin-top: 8px; }
+
+    .conf-big {
+        font-family: 'Orbitron', monospace;
+        font-size: 3rem; font-weight: 900;
+        margin-left: auto;
+        color: white;
+    }
+
+    .conf-label { font-size: 0.75rem; color: var(--text-dim); text-align: right; letter-spacing: 1px; }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+
+    .detail-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.75rem;
+    }
+
+    .detail-card-title {
+        font-family: 'Orbitron', monospace;
+        font-size: 0.95rem; font-weight: 700; color: white;
+        margin-bottom: 1.5rem;
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--text-dim); font-size: 0.875rem; }
+    .info-val { font-weight: 600; font-size: 0.9rem; font-family: 'Share Tech Mono', monospace; }
+
+    .feature-bar-item { margin-bottom: 1.25rem; }
+    .feature-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .feature-bar-name { font-size: 0.875rem; color: var(--text); font-weight: 600; }
+    .feature-bar-val { font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: var(--primary); }
+
+    .bar { height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+
+    .interpretation {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+    .interpretation.human { background: rgba(0,255,136,0.06); border: 1px solid rgba(0,255,136,0.15); color: #7dffc0; }
+    .interpretation.ai { background: rgba(255,51,102,0.06); border: 1px solid rgba(255,51,102,0.15); color: #ff7799; }
+    .interpretation.uncertain { background: rgba(255,170,0,0.06); border: 1px solid rgba(255,170,0,0.15); color: #ffd066; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <div class="container" style="max-width: 900px;">
+        <a href="{% url 'history' %}" class="back-link">← Back to History</a>
+
+        <!-- Header -->
+        <div class="detail-header">
+            <div class="verdict-badge verdict-{{ analysis.result }}">{{ analysis.result_icon }}</div>
+            <div>
+                <div class="verdict-title verdict-{{ analysis.result }}-text">
+                    {% if analysis.result == 'human' %}✅ HUMAN VOICE DETECTED
+                    {% elif analysis.result == 'ai' %}🤖 AI GENERATED VOICE
+                    {% else %}⚠️ RESULT UNCERTAIN
+                    {% endif %}
+                </div>
+                <div class="verdict-sub">Analysis completed on {{ analysis.analyzed_at|date:"F d, Y at H:i" }}</div>
+                <div class="verdict-file">📁 {{ analysis.file_name }}</div>
+            </div>
+            <div style="margin-left: auto; text-align: right;">
+                <div class="conf-big" style="color: {% if analysis.result == 'human' %}var(--success){% elif analysis.result == 'ai' %}var(--danger){% else %}var(--warn){% endif %};">
+                    {{ analysis.confidence_score|floatformat:1 }}%
+                </div>
+                <div class="conf-label">CONFIDENCE SCORE</div>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- File Info -->
+            <div class="detail-card">
+                <div class="detail-card-title">📁 File Information</div>
+                <div class="info-row"><span class="info-key">Filename</span><span class="info-val">{{ analysis.file_name }}</span></div>
+                <div class="info-row"><span class="info-key">File Size</span><span class="info-val">{{ analysis.file_size|floatformat:1 }} KB</span></div>
+                <div class="info-row"><span class="info-key">Duration</span><span class="info-val">{{ analysis.duration|floatformat:2 }} seconds</span></div>
+                <div class="info-row"><span class="info-key">Verdict</span>
+                    <span class="{{ analysis.result_badge_class }}">{{ analysis.result|upper }}</span>
+                </div>
+                <div class="info-row"><span class="info-key">Analyzed By</span><span class="info-val">{{ analysis.user.get_full_name|default:analysis.user.username }}</span></div>
+            </div>
+
+            <!-- Feature Scores -->
+            <div class="detail-card">
+                <div class="detail-card-title">📊 Feature Analysis</div>
+
+                <div class="feature-bar-item">
+                    <div class="feature-bar-header"><span class="feature-bar-name">🔵 Spectral Analysis</span><span class="feature-bar-val">{{ analysis.spectral_score|floatformat:1 }}%</span></div>
+                    <div class="bar"><div class="bar-fill" style="width: {{ analysis.spectral_score }}%; background: linear-gradient(90deg, #00f5ff, #0099cc);"></div></div>
+                </div>
+
+                <div class="feature-bar-item">
+                    <div class="feature-bar-header"><span class="feature-bar-name">🟣 Pitch Detection</span><span class="feature-bar-val">{{ analysis.pitch_score|floatformat:1 }}%</span></div>
+                    <div class="bar"><div class="bar-fill" style="width: {{ analysis.pitch_score }}%; background: linear-gradient(90deg, #7b2fff, #5500cc);"></div></div>
+                </div>
+
+                <div class="feature-bar-item">
+                    <div class="feature-bar-header"><span class="feature-bar-name">🟢 Rhythm Analysis</span><span class="feature-bar-val">{{ analysis.rhythm_score|floatformat:1 }}%</span></div>
+                    <div class="bar"><div class="bar-fill" style="width: {{ analysis.rhythm_score }}%; background: linear-gradient(90deg, #00ff88, #00aa55);"></div></div>
+                </div>
+
+                <div class="feature-bar-item">
+                    <div class="feature-bar-header"><span class="feature-bar-name">🟡 Noise Fingerprint</span><span class="feature-bar-val">{{ analysis.noise_score|floatformat:1 }}%</span></div>
+                    <div class="bar"><div class="bar-fill" style="width: {{ analysis.noise_score }}%; background: linear-gradient(90deg, #ffaa00, #cc7700);"></div></div>
+                </div>
+
+                <div class="feature-bar-item">
+                    <div class="feature-bar-header"><span class="feature-bar-name">🔴 Formant Profile</span><span class="feature-bar-val">{{ analysis.formant_score|floatformat:1 }}%</span></div>
+                    <div class="bar"><div class="bar-fill" style="width: {{ analysis.formant_score }}%; background: linear-gradient(90deg, #ff3366, #cc0033);"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interpretation -->
+        <div class="detail-card" style="margin-top: 1.5rem;">
+            <div class="detail-card-title">🧠 AI Interpretation</div>
+            <div class="interpretation {{ analysis.result }}">
+                {% if analysis.result == 'human' %}
+                    <strong>✅ This recording appears to be a genuine human voice.</strong><br>
+                    The audio exhibits natural spectral variation, organic pitch modulation, and acoustic characteristics
+                    consistent with authentic human speech. The vocal tract resonance patterns (formants) align with
+                    biological vocal cord mechanics. Background noise signatures also appear organic and non-synthetic.
+                    Confidence level: <strong>{{ analysis.confidence_score|floatformat:1 }}%</strong>.
+                {% elif analysis.result == 'ai' %}
+                    <strong>🤖 This recording shows strong indicators of AI generation.</strong><br>
+                    The audio exhibits characteristic anomalies of synthetic speech: overly regular rhythm patterns,
+                    unusually consistent pitch modulation, and spectral artifacts typical of neural TTS (Text-to-Speech)
+                    systems. The formant transitions appear mathematically smooth rather than organically irregular,
+                    and background noise characteristics suggest digital synthesis. Confidence level: <strong>{{ analysis.confidence_score|floatformat:1 }}%</strong>.
+                {% else %}
+                    <strong>⚠️ The analysis result is inconclusive for this recording.</strong><br>
+                    The audio features present a mixed signature that does not conclusively favor either human or
+                    AI generation. This may be due to heavy processing, compression artifacts, voice modulation,
+                    or a very short recording duration. Consider uploading a longer, cleaner sample for a more
+                    definitive result. Confidence level: <strong>{{ analysis.confidence_score|floatformat:1 }}%</strong>.
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            <a href="{% url 'dashboard' %}" class="btn btn-primary">🎙️ Analyze New File</a>
+            <a href="{% url 'history' %}" class="btn btn-secondary">📋 Back to History</a>
+            <form method="POST" action="{% url 'delete_analysis' analysis.pk %}" style="margin-left: auto;"
+                  onsubmit="return confirm('Delete this analysis permanently?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">🗑️ Delete Analysis</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

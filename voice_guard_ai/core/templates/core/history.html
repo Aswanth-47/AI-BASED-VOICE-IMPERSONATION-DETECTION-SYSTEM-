@@ -1,0 +1,166 @@
+{% extends 'core/base.html' %}
+{% block title %}Analysis History - VoiceGuard AI{% endblock %}
+{% block nav_history %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-page { padding: 2rem 0 4rem; }
+
+    .page-header {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .page-title { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700; color: white; }
+    .page-sub { color: var(--text-dim); font-size: 0.9rem; margin-top: 3px; }
+
+    .filter-tabs {
+        display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+
+    .filter-tab {
+        padding: 7px 16px; border-radius: 20px;
+        text-decoration: none; font-size: 0.875rem; font-weight: 600;
+        border: 1px solid var(--border); color: var(--text-dim);
+        transition: all 0.2s;
+    }
+
+    .filter-tab:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-tab.active-all { border-color: var(--primary); color: var(--primary); background: rgba(0,245,255,0.08); }
+    .filter-tab.active-human { border-color: var(--success); color: var(--success); background: rgba(0,255,136,0.08); }
+    .filter-tab.active-ai { border-color: var(--danger); color: var(--danger); background: rgba(255,51,102,0.08); }
+    .filter-tab.active-uncertain { border-color: var(--warn); color: var(--warn); background: rgba(255,170,0,0.08); }
+
+    .history-table {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .table-header {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+        gap: 1rem; padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255,255,255,0.02);
+    }
+
+    .th {
+        font-size: 0.75rem; font-weight: 700;
+        color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    .table-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+        gap: 1rem; padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        align-items: center;
+        transition: background 0.15s;
+    }
+
+    .table-row:hover { background: rgba(255,255,255,0.02); }
+    .table-row:last-child { border-bottom: none; }
+
+    .file-cell { display: flex; align-items: center; gap: 10px; }
+
+    .file-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        background: rgba(0,245,255,0.08); border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;
+    }
+
+    .file-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .file-meta { font-size: 0.75rem; color: var(--text-dim); }
+
+    .cell-value { font-size: 0.9rem; color: var(--text-dim); }
+    .cell-mono { font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; }
+
+    .actions { display: flex; gap: 0.5rem; }
+
+    .btn-icon {
+        width: 32px; height: 32px; border-radius: 6px;
+        display: inline-flex; align-items: center; justify-content: center;
+        text-decoration: none; font-size: 0.9rem;
+        border: 1px solid var(--border); color: var(--text-dim);
+        transition: all 0.2s; cursor: pointer; background: none;
+    }
+
+    .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-icon.del:hover { border-color: var(--danger); color: var(--danger); }
+
+    .empty-state { text-align: center; padding: 5rem 2rem; color: var(--text-dim); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    @media (max-width: 768px) {
+        .table-header { display: none; }
+        .table-row { grid-template-columns: 1fr; gap: 0.5rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <div class="page-title">📋 Analysis History</div>
+                <div class="page-sub">{{ total }} record{{ total|pluralize }} found</div>
+            </div>
+            <div class="filter-tabs">
+                <a href="?filter=all" class="filter-tab {% if result_filter == 'all' %}active-all{% endif %}">All ({{ total }})</a>
+                <a href="?filter=human" class="filter-tab {% if result_filter == 'human' %}active-human{% endif %}">👤 Human</a>
+                <a href="?filter=ai" class="filter-tab {% if result_filter == 'ai' %}active-ai{% endif %}">🤖 AI</a>
+                <a href="?filter=uncertain" class="filter-tab {% if result_filter == 'uncertain' %}active-uncertain{% endif %}">❓ Uncertain</a>
+            </div>
+        </div>
+
+        {% if analyses %}
+        <div class="history-table">
+            <div class="table-header">
+                <div class="th">File</div>
+                <div class="th">Result</div>
+                <div class="th">Confidence</div>
+                <div class="th">Duration</div>
+                <div class="th">Date</div>
+                <div class="th">Actions</div>
+            </div>
+
+            {% for a in analyses %}
+            <div class="table-row">
+                <div class="file-cell">
+                    <div class="file-icon">{{ a.result_icon }}</div>
+                    <div>
+                        <div class="file-name">{{ a.file_name }}</div>
+                        <div class="file-meta">{{ a.file_size|floatformat:1 }} KB</div>
+                    </div>
+                </div>
+                <div><span class="{{ a.result_badge_class }}">{{ a.result|upper }}</span></div>
+                <div class="cell-mono" style="color: {% if a.result == 'human' %}var(--success){% elif a.result == 'ai' %}var(--danger){% else %}var(--warn){% endif %};">
+                    {{ a.confidence_score|floatformat:1 }}%
+                </div>
+                <div class="cell-value">{{ a.duration|floatformat:1 }}s</div>
+                <div class="cell-value">{{ a.analyzed_at|date:"M d, Y" }}<br><span style="font-size: 0.75rem;">{{ a.analyzed_at|time:"H:i" }}</span></div>
+                <div class="actions">
+                    <a href="{% url 'analysis_detail' a.pk %}" class="btn-icon" title="View Details">👁️</a>
+                    <form method="POST" action="{% url 'delete_analysis' a.pk %}" style="display:inline;" onsubmit="return confirm('Delete this analysis?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-icon del" title="Delete">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">🎵</div>
+            <div style="font-size: 1.1rem; color: white; margin-bottom: 0.5rem;">No analyses found</div>
+            <div>{% if result_filter != 'all' %}No {{ result_filter }} voices detected yet.{% else %}Upload your first audio file to get started.{% endif %}</div>
+            <a href="{% url 'dashboard' %}" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-flex;">Go to Dashboard</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

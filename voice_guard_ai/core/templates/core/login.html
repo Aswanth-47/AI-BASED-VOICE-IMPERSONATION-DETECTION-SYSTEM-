@@ -1,0 +1,34 @@
+{% extends 'core/auth_base.html' %}
+{% block title %}Login - VoiceGuard AI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="auth-logo-icon">🛡️</div>
+            <div class="auth-title">Welcome Back</div>
+            <div class="auth-sub">Login to access your VoiceGuard AI dashboard</div>
+        </div>
+
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-input" placeholder="Enter your username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-input" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-auth">🔐 LOGIN</button>
+        </form>
+
+        <div class="auth-divider" style="margin-top: 1rem;">
+            Don't have an account? <a href="{% url 'signup' %}">Create Account</a>
+        </div>
+        <div class="auth-divider" style="margin-top: 0.5rem;">
+            <a href="{% url 'index' %}">← Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
